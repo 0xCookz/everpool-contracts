@@ -6,6 +6,7 @@ test = "test"
 solc_version = "0.8.26"
 optimizer = true
 optimizer_runs = 200
+via_ir = true                    # v4 hooks/compounder hit "stack too deep" without IR
 evm_version = "cancun"           # v4 uses transient storage (Cancun)
 ffi = false
 fs_permissions = [{ access = "read", path = "./"}]
