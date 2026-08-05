@@ -36,6 +36,10 @@ contract EverpoolCompounder is IUnlockCallback, ReentrancyGuard {
     address public treasury;
     uint16 public platformFeeBps;            // e.g. 1000 = 10% (Liquidify-style)
 
+    // live protocol stats (read on-chain by the website)
+    uint256 public poolsLaunched;
+    uint256 public cyclesRun;
+
     mapping(PoolId => PoolKey) internal _keyOf;
 
     event Seeded(PoolId indexed poolId, uint128 liquidity);
@@ -90,6 +94,7 @@ contract EverpoolCompounder is IUnlockCallback, ReentrancyGuard {
         PoolId id = key.toId();
         if (Currency.unwrap(_keyOf[id].currency0) != address(0)) revert AlreadyRegistered();
         _keyOf[id] = key;
+        unchecked { poolsLaunched++; }
         poolManager.unlock(abi.encode(ACTION_SEED, key, amt0, amt1));
         emit Seeded(id, 0);
     }
@@ -98,6 +103,7 @@ contract EverpoolCompounder is IUnlockCallback, ReentrancyGuard {
     function compound(PoolId id) external nonReentrant returns (uint256 added) {
         PoolKey memory key = _keyOf[id];
         if (Currency.unwrap(key.currency0) == address(0)) revert UnknownPool();
+        unchecked { cyclesRun++; }
         bytes memory ret = poolManager.unlock(abi.encode(ACTION_COMPOUND, key, uint256(0), uint256(0)));
         added = abi.decode(ret, (uint256));
     }
