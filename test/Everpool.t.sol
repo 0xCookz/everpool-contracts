@@ -131,4 +131,39 @@ contract EverpoolTest is Test {
         // platform got a cut of the WETH fees
         assertGt(weth.balanceOf(treasury), 0, "treasury received platform cut");
     }
+
+    /// Two launches produce independent, isolated pools.
+    function test_two_launches_are_isolated() public {
+        (address t1, PoolId id1,) = _launch(10 ether);
+        (address t2, PoolId id2,) = _launch(10 ether);
+        assertTrue(t1 != t2, "distinct tokens");
+        assertTrue(PoolId.unwrap(id1) != PoolId.unwrap(id2), "distinct pools");
+        assertGt(StateLibrary.getLiquidity(manager, id1), 0);
+        assertGt(StateLibrary.getLiquidity(manager, id2), 0);
+    }
+
+    /// The pool keeps growing across repeated compound cycles.
+    function test_repeated_compound_keeps_growing() public {
+        (address token, PoolId id, PoolKey memory key) = _launch(50 ether);
+        bool wethIsZero = Currency.unwrap(key.currency0) == address(weth);
+        weth.mint(address(this), 100 ether);
+        weth.approve(address(swapRouter), type(uint256).max);
+        ERC20(token).approve(address(swapRouter), type(uint256).max);
+
+        uint128 l0 = StateLibrary.getLiquidity(manager, id);
+        for (uint256 i = 0; i < 3; i++) {
+            swapRouter.swap(
+                key,
+                IPoolManager.SwapParams({
+                    zeroForOne: wethIsZero,
+                    amountSpecified: -int256(2 ether),
+                    sqrtPriceLimitX96: wethIsZero ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
+                }),
+                PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
+                ""
+            );
+            compounder.compound(id);
+        }
+        assertGt(StateLibrary.getLiquidity(manager, id), l0, "grew across multiple cycles");
+    }
 }

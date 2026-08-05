@@ -10,6 +10,7 @@ import {TickMath} from "v4-core/src/libraries/TickMath.sol";
 import {StateLibrary} from "v4-core/src/libraries/StateLibrary.sol";
 import {BalanceDelta, BalanceDeltaLibrary} from "v4-core/src/types/BalanceDelta.sol";
 import {LiquidityAmounts} from "v4-periphery/src/libraries/LiquidityAmounts.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title EverpoolCompounder (the vault)
 /// @notice Owns every Everpool pool's single, full-range, permanent liquidity position, and is the
@@ -20,7 +21,7 @@ import {LiquidityAmounts} from "v4-periphery/src/libraries/LiquidityAmounts.sol"
 ///
 /// @dev    Prototype — not audited. v1 re-adds collected fees directly; an explicit swap-to-balance
 ///         ("swap half") is a polish step. Dust remains for the next cycle.
-contract EverpoolCompounder is IUnlockCallback {
+contract EverpoolCompounder is IUnlockCallback, ReentrancyGuard {
     using PoolIdLibrary for PoolKey;
     using StateLibrary for IPoolManager;
     using BalanceDeltaLibrary for BalanceDelta;
@@ -84,7 +85,7 @@ contract EverpoolCompounder is IUnlockCallback {
 
     /// @notice Seed a newly launched pool's locked position. The Launcher transfers the token supply
     ///         and the WETH seed to this contract first, then calls this.
-    function seed(PoolKey calldata key, uint256 amt0, uint256 amt1) external {
+    function seed(PoolKey calldata key, uint256 amt0, uint256 amt1) external nonReentrant {
         if (msg.sender != launcher) revert NotLauncher();
         PoolId id = key.toId();
         if (Currency.unwrap(_keyOf[id].currency0) != address(0)) revert AlreadyRegistered();
@@ -94,7 +95,7 @@ contract EverpoolCompounder is IUnlockCallback {
     }
 
     /// @notice Collect accrued fees for a pool and fold them back into its locked liquidity.
-    function compound(PoolId id) external returns (uint256 added) {
+    function compound(PoolId id) external nonReentrant returns (uint256 added) {
         PoolKey memory key = _keyOf[id];
         if (Currency.unwrap(key.currency0) == address(0)) revert UnknownPool();
         bytes memory ret = poolManager.unlock(abi.encode(ACTION_COMPOUND, key, uint256(0), uint256(0)));

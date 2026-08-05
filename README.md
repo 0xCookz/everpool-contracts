@@ -5,6 +5,16 @@ into its own Uniswap **v4** pool on **Robinhood Chain**. See [ARCHITECTURE.md](A
 
 > ⚠️ **Prototype, not audited.** Testnet only until tested end-to-end and professionally audited.
 
+**Status:** ✅ full flow working — **7/7 tests pass**, including a fork test against the **real
+Uniswap v4 deployed on Robinhood Chain mainnet** (launch → lock → trade → compound → pool grows →
+treasury cut). Addresses in [addresses.robinhood.md](addresses.robinhood.md).
+
+```bash
+forge test                                                          # local (mock v4)
+forge test --fork-url https://rpc.mainnet.chain.robinhood.com \
+  --match-path test/EverpoolFork.t.sol                             # against real Robinhood v4
+```
+
 ## Contracts (`src/`)
 - `EverpoolToken.sol` — fixed-supply ERC20, minted once to the launcher.
 - `EverpoolHook.sol` — v4 hook: liquidity is protocol-owned and **permanent** (add = protocol-only,
