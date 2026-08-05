@@ -22,7 +22,21 @@ forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --broadcast \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
-## 2. Real broadcast (your funded wallet)
+## 2. Testnet deploy (FREE — do this first) ✅
+Robinhood testnet (chainId 46630) has the same Uniswap v4 addresses as mainnet.
+1. Make a throwaway wallet, get test ETH from the faucet: https://faucets.chain.link/robinhood-testnet
+2. Import the key (encrypted): `cast wallet import deployer --interactive`
+3. Deploy:
+```bash
+export POOL_MANAGER=0x8366a39CC670B4001A1121B8F6A443A643e40951
+export WETH=0x7943e237c7F95DA44E0301572D358911207852Fa    # testnet WETH
+forge script script/Deploy.s.sol \
+  --rpc-url https://rpc.testnet.chain.robinhood.com \
+  --account deployer --broadcast
+```
+Then try `EverpoolLauncher.launch("MyToken","MTK", <wethSeed>)` from the explorer or a script.
+
+## 3. Real broadcast — MAINNET (real money; only AFTER an audit)
 Store the key safely as an encrypted keystore instead of plain text:
 ```bash
 cast wallet import deployer --interactive   # paste your key ONCE; it's encrypted on disk
@@ -38,7 +52,7 @@ forge script script/Deploy.s.sol --rpc-url https://rpc.mainnet.chain.robinhood.c
 > Testnet target (chainId 46630) is preferred first, but its Uniswap v4 PoolManager address is not
 > published yet — needs confirming before a testnet run.
 
-## 3. After deploy
+## 4. After deploy
 - `EverpoolLauncher.launch(name, symbol, wethSeed)` creates a token + locked pool (needs WETH approved).
 - Run the keeper (`keeper/compound-keeper.mjs`) with `COMPOUNDER` + the pool ids to grow pools every 10 min.
 - Consider transferring `owner` of the hook + compounder to a **multisig**.

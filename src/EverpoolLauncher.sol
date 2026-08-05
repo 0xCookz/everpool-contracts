@@ -7,6 +7,7 @@ import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/src/types/PoolId.sol";
 import {Currency} from "v4-core/src/types/Currency.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {EverpoolToken} from "./EverpoolToken.sol";
 
 interface IEverpoolVault {
@@ -30,7 +31,6 @@ contract EverpoolLauncher {
     uint24 public constant FEE = 3000;          // 0.30%
     int24 public constant TICK_SPACING = 60;
     uint256 public constant SUPPLY = 1_000_000_000e18;   // 1,000,000,000 tokens
-    uint160 internal constant SQRT_PRICE_1_1 = 79228162514264337593543950336;
 
     event Launched(address indexed token, PoolId indexed poolId, address indexed creator, uint256 wethSeed);
 
@@ -47,6 +47,7 @@ contract EverpoolLauncher {
         external
         returns (address token, PoolId id)
     {
+        require(wethSeed > 0, "seed=0");
         IERC20(weth).transferFrom(msg.sender, address(this), wethSeed);
 
         EverpoolToken t = new EverpoolToken(name, symbol, SUPPLY, address(this));
@@ -61,22 +62,23 @@ contract EverpoolLauncher {
             PoolKey({currency0: c0, currency1: c1, fee: FEE, tickSpacing: TICK_SPACING, hooks: hook});
         id = key.toId();
 
-        poolManager.initialize(key, SQRT_PRICE_1_1);
+        (uint256 amt0, uint256 amt1) =
+            Currency.unwrap(c0) == token ? (SUPPLY, wethSeed) : (wethSeed, SUPPLY);
+
+        // start the pool at the seed's own ratio, so both sides are used and the price isn't arbitrary
+        poolManager.initialize(key, _priceFromAmounts(amt0, amt1));
 
         // move the seed assets to the vault, then let it add & lock the position (it owns positions)
-        uint256 amt0;
-        uint256 amt1;
-        if (Currency.unwrap(c0) == token) {
-            amt0 = SUPPLY;
-            amt1 = wethSeed;
-        } else {
-            amt0 = wethSeed;
-            amt1 = SUPPLY;
-        }
         IERC20(token).transfer(address(vault), SUPPLY);
         IERC20(weth).transfer(address(vault), wethSeed);
         vault.seed(key, amt0, amt1);
 
         emit Launched(token, id, msg.sender, wethSeed);
+    }
+
+    /// @dev sqrtPriceX96 for a pool that will hold amt0 of currency0 and amt1 of currency1.
+    ///      price = amt1/amt0 (currency1 per currency0); sqrtPriceX96 = sqrt(price) * 2**96.
+    function _priceFromAmounts(uint256 amt0, uint256 amt1) internal pure returns (uint160) {
+        return uint160(Math.sqrt(Math.mulDiv(amt1, 1 << 192, amt0)));
     }
 }

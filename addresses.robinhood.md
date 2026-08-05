@@ -12,9 +12,15 @@ Assets (source: docs.robinhood.com/chain/contracts):
 - **WETH**             `0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73`
 - USDG                 `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168`
 
-## Testnet (chainId 46630, RPC https://rpc.testnet.chain.robinhood.com)
-- WETH (unverified, from search)  `0x7943e237c7F95DA44E0301572D358911207852Fa`
-- Uniswap v4 PoolManager: not yet found in docs — confirm before testnet deploy.
+## Testnet (chainId 46630, RPC https://rpc.testnet.chain.robinhood.com) — CONFIRMED ✅
+Uniswap v4 is at the SAME addresses as mainnet (verified on-chain: PoolManager bytecode is
+byte-identical on both nets — 48020 bytes; the testnet explorer shows the PositionManager as
+"Uniswap v4 Positions NFT"):
+- **PoolManager**  `0x8366a39CC670B4001A1121B8F6A443A643e40951`
+- PositionManager  `0x58daec3116aae6D93017bAAea7749052E8a04fA7`
+- **WETH**         `0x7943e237c7F95DA44E0301572D358911207852Fa`  (verified: symbol() == "WETH")
+- Faucet:   https://faucets.chain.link/robinhood-testnet
+- Explorer: https://explorer.testnet.chain.robinhood.com
 
 ## .env for deploy
 ```
