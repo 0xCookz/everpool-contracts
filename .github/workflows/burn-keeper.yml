@@ -1,0 +1,25 @@
+name: Everpool burn keeper
+
+# Runs the permissionless burn() for every launched token on a schedule.
+# Setup (one-time): add a repo secret KEEPER_PRIVATE_KEY = a wallet with a little ETH for gas.
+on:
+  schedule:
+    - cron: "*/20 * * * *"   # every 20 minutes (GitHub may delay a few min under load)
+  workflow_dispatch: {}       # manual "Run workflow" button too
+
+concurrency:
+  group: burn-keeper
+  cancel-in-progress: false
+
+jobs:
+  burn:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: npm init -y >/dev/null && npm install ethers@6 --no-save --silent
+      - run: node keeper/burn-keeper.mjs
+        env:
+          PRIVATE_KEY: ${{ secrets.KEEPER_PRIVATE_KEY }}
+          RUN_ONCE: "true"
